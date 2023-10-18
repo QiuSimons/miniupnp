@@ -384,10 +384,10 @@ upnp_event_notify_connect(struct upnp_event_notify * obj)
 	obj->state = EConnecting;
 	if(connect(obj->s, (struct sockaddr *)&addr, addrlen) < 0) {
 		if(errno != EINPROGRESS && errno != EWOULDBLOCK) {
-			syslog(LOG_ERR, "%s: connect(%d, %s, %u): %m",
+			/* syslog(LOG_ERR, "%s: connect(%d, %s, %u): %m",
 			       "upnp_event_notify_connect", obj->s,
 			       obj->addrstr, addrlen);
-			obj->state = EError;
+			obj->state = EError; */
 		}
 	}
 }
