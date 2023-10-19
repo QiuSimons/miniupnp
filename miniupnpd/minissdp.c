@@ -712,8 +712,8 @@ SendSSDPNotify(int s, const struct sockaddr * dest, socklen_t dest_len,
 	}
 	n = sendto_or_schedule(s, bufr, l, 0, dest, dest_len);
 	if(n < 0) {
-		syslog(LOG_ERR, "sendto(udp_notify=%d, %s): %m", s,
-		       host ? host : "NULL");
+		/* syslog(LOG_ERR, "sendto(udp_notify=%d, %s): %m", s,
+		       host ? host : "NULL"); */
 	} else if(n != l) {
 		syslog(LOG_NOTICE, "sendto() sent %d out of %d bytes", n, l);
 	}
