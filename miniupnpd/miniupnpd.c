@@ -2875,7 +2875,7 @@ main(int argc, char * * argv)
 		}
 		i = try_sendto(&writeset);
 		if(i < 0) {
-			syslog(LOG_ERR, "try_sendto failed to send %d packets", -i);
+			/*syslog(LOG_ERR, "try_sendto failed to send %d packets", -i);*/
 		}
 #ifdef USE_MINIUPNPDCTL
 		for(ectl = ctllisthead.lh_first; ectl;)
