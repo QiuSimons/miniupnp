@@ -547,10 +547,10 @@ upnp_event_process_notify(struct upnp_event_notify * obj)
 		}
 		if(err != 0) {
 			errno = err;
-			syslog(LOG_WARNING, "%s: connect(%s%s): %m",
+			/*syslog(LOG_WARNING, "%s: connect(%s%s): %m",
 			       "upnp_event_process_notify",
 			       obj->addrstr, obj->portstr);
-			obj->state = EError;
+			obj->state = EError;*/
 			break;
 		}
 		upnp_event_prepare(obj);
