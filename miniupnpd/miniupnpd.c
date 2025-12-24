@@ -425,7 +425,7 @@ OpenAndConfHTTPSocket(unsigned short * port)
 		return -1;
 	}
 
-	if(listen(s, 5) < 0)
+	if(listen(s, 128) < 0)
 	{
 		syslog(LOG_ERR, "listen(http): %m");
 		close(s);
@@ -705,7 +705,7 @@ OpenAndConfCtlUnixSocket(const char * path)
 		close(s);
 		s = -1;
 	}
-	else if(listen(s, 5) < 0)
+	else if(listen(s, 128) < 0)
 	{
 		syslog(LOG_ERR, "listen(sctl): %m");
 		close(s);
