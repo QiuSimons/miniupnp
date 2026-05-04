@@ -3,7 +3,7 @@
  * Project : miniupnp
  * Web : http://miniupnp.free.fr/ or https://miniupnp.tuxfamily.org/
  * Author : Thomas Bernard
- * Copyright (c) 2010-2025 Thomas Bernard
+ * Copyright (c) 2010-2026 Thomas Bernard
  * This software is subject to the conditions detailed in the
  * LICENCE file provided in this distribution. */
 
@@ -53,6 +53,14 @@
 
 #include "connecthostport.h"
 
+#if defined(_WIN32) && defined(MINIUPNPC_IGNORE_EINTR)
+#error MINIUPNPC_IGNORE_EINTR cannot be used in Win32 builds
+#endif
+
+#ifndef MINIUPNPC_CONNECT_TIMEOUT_IN_MS
+#define MINIUPNPC_CONNECT_TIMEOUT_IN_MS 3000
+#endif
+
 #ifndef MAXHOSTNAMELEN
 #define MAXHOSTNAMELEN 64
 #endif
@@ -95,9 +103,10 @@ SOCKET connecthostport(const char * host, unsigned short port,
 #endif /* #ifdef USE_GETHOSTBYNAME */
 #ifdef MINIUPNPC_SET_SOCKET_TIMEOUT
 #ifdef _WIN32
-	DWORD timeout;
+	DWORD timeout = MINIUPNPC_CONNECT_TIMEOUT_IN_MS; /* 3000 ms */
 #else
-	struct timeval timeout;
+	struct timeval timeout = { MINIUPNPC_CONNECT_TIMEOUT_IN_MS / 1000,
+							   (MINIUPNPC_CONNECT_TIMEOUT_IN_MS % 1000) * 1000 }; /* 3 s */
 #endif
 #endif /* #ifdef MINIUPNPC_SET_SOCKET_TIMEOUT */
 
@@ -122,22 +131,29 @@ SOCKET connecthostport(const char * host, unsigned short port,
 	/* https://learn.microsoft.com/en-us/windows/win32/api/winsock/nf-winsock-setsockopt
 	 * SO_RCVTIMEO DWORD Sets the timeout, in milliseconds, for blocking
 	 * receive calls. */
-	timeout = 3000; /* milliseconds */
 	if(setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)) < 0)
 #else
-	timeout.tv_sec = 3;
-	timeout.tv_usec = 0;
+	/* from socket(7) :
+	SO_RCVTIMEO et SO_SNDTIMEO
+	Specify the receiving or sending timeouts until reporting an error. The
+	argument is a struct timeval. If an input or output function blocks for
+	this period of time, and data has been sent or received, the return value
+	of that function will be the amount of data transferred; if no data has
+	been transferred and the timeout has been reached, then -1 is returned with
+	errno set to EAGAIN or EWOULDBLOCK, or EINPROGRESS (for connect(2)) just as
+	if the socket was specified to be nonblocking. If the timeout is set to
+	zero (the default), then the operation will never timeout. Timeouts only
+	have effect for system calls that perform socket I/O (e.g., accept(2),
+	connect(2), read(2), recvmsg(2), send(2), sendmsg(2)); timeouts have no
+	effect for select(2), poll(2), epoll_wait(2), and so on. */
 	if(setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(struct timeval)) < 0)
 #endif
 	{
 		PRINT_SOCKET_ERROR("setsockopt SO_RCVTIMEO");
 	}
 #ifdef _WIN32
-	timeout = 3000; /* milliseconds */
 	if(setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout)) < 0)
 #else
-	timeout.tv_sec = 3;
-	timeout.tv_usec = 0;
 	if(setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(struct timeval)) < 0)
 #endif
 	{
@@ -158,7 +174,7 @@ SOCKET connecthostport(const char * host, unsigned short port,
 #ifdef USE_POLL
 		struct pollfd pfd = {s, POLLOUT, 0};
 #ifdef MINIUPNPC_SET_SOCKET_TIMEOUT
-		n = poll(&pfd, 1, 3000);
+		n = poll(&pfd, 1, MINIUPNPC_CONNECT_TIMEOUT_IN_MS);
 #else
 		n = poll(&pfd, 1, -1);
 #endif
@@ -176,8 +192,6 @@ SOCKET connecthostport(const char * host, unsigned short port,
 		}
 		FD_SET(s, &wset);
 #ifdef MINIUPNPC_SET_SOCKET_TIMEOUT
-		timeout.tv_sec = 3;
-		timeout.tv_usec = 0;
 		n = select(s + 1, NULL, &wset, NULL, &timeout);
 #else
 		n = select(s + 1, NULL, &wset, NULL, NULL);
@@ -271,22 +285,16 @@ SOCKET connecthostport(const char * host, unsigned short port,
 #ifdef MINIUPNPC_SET_SOCKET_TIMEOUT
 		/* setting a 3 seconds timeout for the connect() call */
 #ifdef _WIN32
-		timeout = 3000; /* milliseconds */
 		if(setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout)) < 0)
 #else
-		timeout.tv_sec = 3;
-		timeout.tv_usec = 0;
 		if(setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(struct timeval)) < 0)
 #endif
 		{
 			PRINT_SOCKET_ERROR("setsockopt");
 		}
 #ifdef _WIN32
-		timeout = 3000; /* milliseconds */
 		if(setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char *)&timeout, sizeof(timeout)) < 0)
 #else
-		timeout.tv_sec = 3;
-		timeout.tv_usec = 0;
 		if(setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(struct timeval)) < 0)
 #endif
 		{
@@ -305,7 +313,7 @@ SOCKET connecthostport(const char * host, unsigned short port,
 #ifdef USE_POLL
 			struct pollfd pfd = {s, POLLOUT, 0};
 #ifdef MINIUPNPC_SET_SOCKET_TIMEOUT
-			n = poll(&pfd, 1, 3000);
+			n = poll(&pfd, 1, MINIUPNPC_CONNECT_TIMEOUT_IN_MS);
 #else
 			n = poll(&pfd, 1, -1);
 #endif
@@ -324,8 +332,6 @@ SOCKET connecthostport(const char * host, unsigned short port,
 			}
 			FD_SET(s, &wset);
 #ifdef MINIUPNPC_SET_SOCKET_TIMEOUT
-			timeout.tv_sec = 3;
-			timeout.tv_usec = 0;
 			n = select(s + 1, NULL, &wset, NULL, &timeout);
 #else
 			n = select(s + 1, NULL, &wset, NULL, NULL);
